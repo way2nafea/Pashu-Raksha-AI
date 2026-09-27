@@ -1,0 +1,158 @@
+{
+  "model_version": "v20260925-livestock-cleaned",
+  "trained_at": "2026-09-25T17:31:14.114552+00:00",
+  "algorithm": "RandomForestClassifier (scikit-learn), n_estimators=300, class_weight=balanced",
+  "feature_schema_version": "v1-2026.09",
+  "feature_columns": [
+    "symptom_fever",
+    "symptom_reduced_appetite",
+    "symptom_lethargy",
+    "symptom_nasal_discharge",
+    "symptom_coughing",
+    "symptom_diarrhea",
+    "symptom_skin_lesions",
+    "symptom_swelling",
+    "symptom_respiratory_difficulty",
+    "symptom_sudden_mortality",
+    "age_months",
+    "symptom_duration_days",
+    "affected_head_count",
+    "mortality_count",
+    "herd_size",
+    "nearby_similar_case_count",
+    "species_cattle",
+    "species_buffalo",
+    "species_goat",
+    "species_sheep",
+    "species_poultry",
+    "species_other",
+    "severity_mild",
+    "severity_moderate",
+    "severity_severe",
+    "severity_critical",
+    "vaccination_status_vaccinated",
+    "vaccination_status_unvaccinated",
+    "vaccination_status_unknown"
+  ],
+  "target_column": "disease",
+  "classes": [
+    "anthrax",
+    "blackleg",
+    "foot and mouth",
+    "lumpy virus",
+    "pneumonia"
+  ],
+  "dataset_source": "Mentor-provided Livestock Disease Diagnosis Dataset; license/provenance not independently verified",
+  "n_rows_source": 43778,
+  "n_rows_used": 43778,
+  "n_rows_train_evaluation": 34032,
+  "n_rows_test_evaluation": 9746,
+  "group_aware_split": true,
+  "random_seed": 42,
+  "metrics": {
+    "accuracy": 0.6861,
+    "macro_precision": 0.687,
+    "macro_recall": 0.6982,
+    "macro_f1": 0.6777,
+    "confusion_matrix": [
+      [
+        1654,
+        137,
+        0,
+        0,
+        0
+      ],
+      [
+        585,
+        1322,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1921,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        258,
+        1189,
+        569
+      ],
+      [
+        0,
+        0,
+        250,
+        1260,
+        601
+      ]
+    ],
+    "confusion_matrix_labels": [
+      "anthrax",
+      "blackleg",
+      "foot and mouth",
+      "lumpy virus",
+      "pneumonia"
+    ],
+    "per_class_report": {
+      "anthrax": {
+        "precision": 0.7387226440375168,
+        "recall": 0.9235064209938582,
+        "f1-score": 0.8208436724565756,
+        "support": 1791.0
+      },
+      "blackleg": {
+        "precision": 0.906100068540096,
+        "recall": 0.6932354483481908,
+        "f1-score": 0.7855020796197266,
+        "support": 1907.0
+      },
+      "foot and mouth": {
+        "precision": 0.7908604363935776,
+        "recall": 1.0,
+        "f1-score": 0.8832183908045977,
+        "support": 1921.0
+      },
+      "lumpy virus": {
+        "precision": 0.48550428746427116,
+        "recall": 0.589781746031746,
+        "f1-score": 0.5325867861142217,
+        "support": 2016.0
+      },
+      "pneumonia": {
+        "precision": 0.5136752136752136,
+        "recall": 0.2846991946944576,
+        "f1-score": 0.36635172203596467,
+        "support": 2111.0
+      },
+      "accuracy": 0.6861276421095834,
+      "macro avg": {
+        "precision": 0.686972530022135,
+        "recall": 0.6982445620136506,
+        "f1-score": 0.6777005302062172,
+        "support": 9746.0
+      },
+      "weighted avg": {
+        "precision": 0.6806251799800498,
+        "recall": 0.6861276421095834,
+        "f1-score": 0.6681520067683533,
+        "support": 9746.0
+      }
+    }
+  },
+  "preprocessing_notes": [
+    "Normalized case and whitespace.",
+    "Standardized cow to cattle.",
+    "Mapped only compatible symptoms to the existing PASHU-RAKSHAK symptom vocabulary.",
+    "Unmatched symptoms were preserved for audit and not assigned invented meanings.",
+    "Age 1\u201315 was converted to months using a documented years-to-months assumption; verify against the original dataset source.",
+    "Unavailable clinical fields were left at schema defaults rather than fabricated.",
+    "No exact duplicate source rows were found.",
+    "Evaluation uses a group-aware 80/20 split by species + age + mapped symptom profile.",
+    "Final model was retrained on all cleaned records after evaluation."
+  ]
+}

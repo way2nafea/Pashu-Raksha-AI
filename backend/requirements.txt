@@ -1,0 +1,25 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+python-dotenv==1.0.1
+google-auth==2.35.0
+email-validator==2.2.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.0
+python-multipart==0.0.9
+pymongo==4.9.1
+mongomock==4.2.0.post1
+pytest==8.3.3
+httpx==0.27.2
+
+# --- Real ML disease-prediction pipeline (app/ml/) ---
+# Only required to TRAIN a model (app/ml/train.py) or to run inference once
+# a trained artifact exists. app/ml/service.py imports joblib lazily, so
+# the rest of the API works fine even before these are installed / before
+# any model has been trained (see docs/ml-disease-prediction.md).
+pandas==2.2.3
+scikit-learn==1.5.2
+joblib==1.4.2
+
