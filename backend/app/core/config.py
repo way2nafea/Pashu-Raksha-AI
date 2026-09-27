@@ -22,6 +22,14 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
 
+def _parse_cors_origins(value: str) -> list[str]:
+    return [
+        origin
+        for raw_origin in value.split(",")
+        if (origin := raw_origin.strip().strip("\"'").rstrip("/"))
+    ]
+
+
 class Settings:
     APP_NAME: str = "PASHU-RAKSHAK AI"
     API_V1_PREFIX: str = "/api/v1"
@@ -34,14 +42,12 @@ class Settings:
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE: timedelta = timedelta(hours=12)
 
-    CORS_ORIGINS: list = [
-        origin.strip()
-        for origin in os.getenv(
+    CORS_ORIGINS: list = _parse_cors_origins(
+        os.getenv(
             "CORS_ORIGINS",
             "http://localhost:3000,http://127.0.0.1:3000",
-        ).split(",")
-        if origin.strip()
-    ]
+        )
+    )
     GOOGLE_MAPS_API_KEY: str = os.getenv("GOOGLE_MAPS_API_KEY", "")
     GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "")
 

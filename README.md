@@ -1,253 +1,253 @@
 # PASHU-RAKSHAK AI
 
-**Detect Early · Respond Faster · Protect Livestock**
+**Detect Early. Respond Faster. Protect Livestock.**
 
-Smart India Hackathon 2026 · Problem Statement PS 26128 · Government of Maharashtra
-Theme: Agriculture, FoodTech & Rural Development
+Smart India Hackathon 2026 | Problem Statement PS 26128 | Government of Maharashtra
 
----
+PASHU-RAKSHAK AI is a livestock disease surveillance prototype for symptom
+reporting, preliminary disease prediction and risk assessment, case
+management, and government monitoring. It connects farmer reports with
+field-worker and veterinary workflows, laboratory records, outbreak
+monitoring, and role-specific dashboards. It is decision support, not a
+veterinary diagnosis system.
 
-## 1. Problem & Solution
+## Current Features
 
-Livestock disease outbreaks in Maharashtra often go undetected until they've
-already spread across villages, because there is no shared system connecting
-a farmer noticing symptoms to the veterinary and public-health response
-chain. PASHU-RAKSHAK AI closes that gap with one connected workflow:
+- Farm and animal records; symptom reports with location and optional photo reference.
+- Disease prediction using the included trained model artifact, with a clearly identified rule-based disease-category fallback.
+- Rule-based case risk scoring, nearby-case analysis, potential outbreak clusters, and risk alerts.
+- Field-worker tasks and visits; veterinary case queues, treatment, and laboratory sample/results workflows.
+- Vaccination records, weather context, herd-health summaries, government analytics, GIS map, user administration, and audit log.
+- Selected report, field-visit, vaccination, and lab-status actions can be queued in browser local storage and synced when connectivity returns.
+- English, Hindi, and Marathi UI strings are available through the language switcher; translation coverage is partial.
 
-```
-FARMER → DISEASE REPORT → AI RISK ASSESSMENT → GIS / NEARBY CASES
-  → OUTBREAK DETECTION → ALERT → VETERINARIAN → FIELD RESPONSE
-  → LAB / DIAGNOSIS → TREATMENT → GOVERNMENT DASHBOARD
-```
+## Architecture
 
-A farmer reports symptoms with location and photo evidence in a guided
-mobile-friendly form. A deterministic AI risk engine immediately triages the
-report, checks for nearby similar cases, and flags a potential outbreak if a
-geographic-temporal cluster threshold is met. Veterinarians see a
-risk-prioritized case queue, record field visits, request lab tests, and
-record treatment. Government users get a live command-center dashboard with
-a GIS risk map and disease analytics.
-
-## 2. Architecture
-
-Modular monolith — one FastAPI backend, cleanly separated into modules that
-can be split into microservices later without a rewrite. See
-[`docs/architecture.md`](docs/architecture.md) for the full diagram.
-
-```
-apps/web/        Next.js 15 + TypeScript + Tailwind — Farmer, Vet, Lab,
-                  Government and Admin portals in one role-based app
-backend/         FastAPI (Python) — modular monolith, JWT + RBAC
-docs/            Architecture, AI engine, outbreak detection, demo script
-docker-compose.yml
-```
-
-## 3. Technology Stack
-
-| Layer | Technology |
+| Component | Implementation |
 |---|---|
-| Web dashboard | Next.js 15, React 19, TypeScript, Tailwind CSS v4 |
-| Backend | Python 3.12, FastAPI, Pydantic, Uvicorn |
-| Database | MongoDB (Atlas in production; in-memory `mongomock` in demo mode) |
-| AI / Risk Engine | Deterministic rule-based expert system (Python) — Phase 1 per TRD |
-| GIS | OpenStreetMap, Leaflet, GeoJSON, haversine-based proximity queries |
-| Auth | JWT (python-jose) + bcrypt |
-| Charts | Recharts |
+| Frontend | `apps/web`: Next.js 16, React 19, TypeScript, Tailwind CSS |
+| Backend | `backend`: FastAPI modular application, Python 3.12, Uvicorn |
+| Persistence | MongoDB via PyMongo; MongoDB Atlas is suitable for hosted environments |
+| Authentication | Email/password and optional Google Identity Services; JWT bearer tokens and server-side role checks |
+| GIS | Leaflet and OpenStreetMap tiles; GeoJSON locations and Python haversine proximity queries |
+| Disease prediction | Trained scikit-learn RandomForest artifact with rule-based fallback; separate deterministic rule engine computes operational risk/urgency |
 
-**Mobile app note:** the Expo/React Native farmer app specified in the TRD
-was out of scope for this build pass — the Next.js web app is fully
-responsive (360px–1280px+) and serves as the demo substitute. See
-[`docs/future-scope.md`](docs/future-scope.md).
+The backend modules cover authentication, users, farms, animals, reports,
+cases, visits, treatment, laboratory, vaccination, GIS, alerts, analytics,
+sync, audit, and weather. See [architecture](docs/architecture.md),
+[RBAC](docs/rbac.md), [database](docs/database.md), and
+[outbreak detection](docs/outbreak-detection.md) for deeper details.
 
-## 4. Demo Mode (no external services required)
+## Roles and Routes
 
-If `MONGODB_URI` is left empty, the backend runs entirely on `mongomock` —
-an in-memory, API-compatible MongoDB substitute — and **auto-seeds a
-realistic demo dataset on startup** (see `backend/seed/seed_data.py`). This
-means the full prototype runs with zero paid services, zero setup beyond
-`pip install`, for hackathon evaluation.
+All roles use the same sign-in page at `/`. `/login` redirects to `/`. After
+sign-in, users are routed to their role home. Route guards and backend
+dependencies enforce access; the frontend routes are not a substitute for
+API authorization.
 
-To run against real MongoDB Atlas in production, set `MONGODB_URI` in
-`backend/.env` — the exact same code path is used, with real 2dsphere
-geospatial indexes created automatically. MongoDB is intentionally the only
-supported database (per the architecture spec) — **not** PostgreSQL/PostGIS.
+| Role | Main frontend routes |
+|---|---|
+| `FARMER` | `/farmer`, `/farmer/farms`, `/farmer/report`, `/farmer/cases`, `/farmer/alerts` |
+| `FIELD_WORKER` | `/field-worker`, `/field-worker/[id]`, `/vet` (case queue/detail), `/farmer/farms` |
+| `VETERINARIAN` | `/vet`, `/vet/[id]`, `/vet/alerts` |
+| `LAB_STAFF` | `/lab` |
+| `DISTRICT_ADMIN` | `/gov`, `/gov/cases`, `/gov/map`, `/admin/users` (view users) |
+| `STATE_ADMIN` | `/gov`, `/gov/cases`, `/gov/map`, `/admin/users` |
+| `SUPER_ADMIN` | `/gov`, `/gov/cases`, `/gov/map`, `/admin/users`, `/admin/audit` |
 
-## 5. Demo Accounts
+Farmers can publicly register; public registrations create `FARMER` accounts.
+The first account registered on a completely empty database is a bootstrap
+`SUPER_ADMIN` so that initial staff provisioning is possible. This exception
+closes as soon as an account exists. Staff and government users are otherwise
+provisioned by an authorized administrator. `SUPER_ADMIN` creates accounts
+from `/admin/users`; district and state admins can view the user list but
+cannot create accounts.
 
-| Role | Email | Password |
-|---|---|---|
-| Farmer | farmer@pashuraksha.demo | Demo@123 |
-| Field Worker | worker@pashuraksha.demo | Demo@123 |
-| Veterinarian | vet@pashuraksha.demo | Demo@123 |
-| Lab Staff | lab@pashuraksha.demo | Demo@123 |
-| District Admin | district@pashuraksha.demo | Demo@123 |
-| State Admin | state@pashuraksha.demo | Demo@123 |
-| Super Admin | admin@pashuraksha.demo | Demo@123 |
+## Database and Environment
 
-These are created automatically by the seed script on first backend
-startup in demo mode — no manual setup needed.
+A real MongoDB connection is required for SIH demos, evaluation, and deployed
+use. Do not use the in-memory `mongomock` fallback for these runs: its data is
+lost when the backend restarts. No demo users or records are automatically
+seeded. For a fresh database, the first account follows the bootstrap rule
+above. The optional developer seed script is manual-only.
 
-## 6. Running It
+Connection examples:
 
-### Backend
-
-```bash
-cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```text
+Local MongoDB: mongodb://localhost:27017
+MongoDB Atlas: mongodb+srv://<user>:<password>@<cluster>.mongodb.net
+Database name: pashurakshak
 ```
 
-Swagger docs: http://localhost:8000/docs
-The demo dataset is seeded automatically on first startup (see console log).
+Set backend values in `backend/.env` (copy `backend/.env.example`):
 
-### Web app
+| Variable | Purpose |
+|---|---|
+| `MONGODB_URI` | Real local MongoDB or Atlas connection string; required for persistent data |
+| `MONGODB_DB` | Database name; defaults to `pashurakshak` |
+| `JWT_SECRET` | Token signing secret; replace the development default with a strong private value |
+| `CORS_ORIGINS` | Comma-separated exact frontend origins; use the deployed frontend URL in Render |
+| `GOOGLE_CLIENT_ID` | Optional backend Google ID-token audience; needed only for Google sign-in |
+| `GOOGLE_MAPS_API_KEY` | Optional; selects Google Weather/Air Quality APIs instead of the default Open-Meteo weather provider |
+| `OUTBREAK_RADIUS_KM` | Outbreak cluster radius; default `10` |
+| `OUTBREAK_TIME_WINDOW_DAYS` | Outbreak time window; default `14` |
+| `OUTBREAK_MIN_CASES` | Minimum reports for a cluster; default `3` |
+| `NEARBY_CASE_RADIUS_KM` | Nearby-case search radius; default `15` |
 
-```bash
+The `.env.example` also contains `CLOUDINARY_*` placeholders, but current
+backend settings do not read them. Do not treat them as a configured upload
+integration. Never commit real connection strings, passwords, or API keys.
+
+## Local Development
+
+The following commands use PowerShell. Configure `MONGODB_URI` and a private
+`JWT_SECRET` in `backend/.env` before running the application.
+
+```powershell
+cd backend
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+Copy-Item .env.example .env
+# Edit .env: set MONGODB_URI to a real MongoDB connection string.
+python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+In a second terminal:
+
+```powershell
 cd apps/web
 npm install
-cp .env.local.example .env.local   # points to http://localhost:8000
+Copy-Item .env.local.example .env.local
+# Keep NEXT_PUBLIC_API_URL=http://localhost:8000 for host-local development.
 npm run dev
 ```
 
-Open http://localhost:3000 and sign in with any demo account above (click
-a role chip to autofill the email).
+Open `http://localhost:3000`. Backend health and interactive API docs are at
+`http://localhost:8000/health` and `http://localhost:8000/docs`.
 
-### Access from another device on the LAN (Windows)
+For another device on the LAN, set `NEXT_PUBLIC_API_URL` to
+`http://<HOST_LAN_IP>:8000`, `NEXT_DEV_ALLOWED_ORIGINS` to `<HOST_LAN_IP>`,
+and include `http://<HOST_LAN_IP>:3000` in backend `CORS_ORIGINS`. The host
+firewall may need inbound TCP 3000 and 8000. Do not expose MongoDB port 27017.
 
-Find the host laptop's Wi-Fi IPv4 address with `ipconfig`. Before starting the
-backend, allow the frontend origin in `backend/.env` (replace the example IP):
+## Render Deployment
 
-```env
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://192.168.X.X:3000
-```
+There is no Render manifest in this repository; create two separate Render
+Web Services using the monorepo subdirectories as their Root Directories.
+Use MongoDB Atlas for the hosted backend. Render cannot reach a MongoDB server
+running at `mongodb://localhost:27017` on a developer's PC; configure Atlas
+network access to allow the backend service to connect.
 
-Start the backend from a PowerShell terminal:
+### Backend service
+
+| Render setting | Value |
+|---|---|
+| Root Directory | `backend` |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+
+Set `MONGODB_URI` to the Atlas connection string, `MONGODB_DB=pashurakshak`,
+`JWT_SECRET` to a strong private value, and `CORS_ORIGINS` to the exact
+deployed frontend origin, for example `https://<frontend-service>.onrender.com`.
+Add optional Google variables only when configuring those integrations.
+
+### Frontend service
+
+| Render setting | Value |
+|---|---|
+| Root Directory | `apps/web` |
+| Build Command | `npm install && npm run build` |
+| Start Command | `npm run start` |
+
+Set `NEXT_PUBLIC_API_URL` to the deployed backend origin, for example
+`https://<backend-service>.onrender.com`, not `localhost`. Next.js embeds this
+public variable during the build, so set it before building/redeploying. If
+Google sign-in is enabled, also set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to the same
+OAuth client ID as backend `GOOGLE_CLIENT_ID` and authorize the deployed
+frontend origin in Google Identity Services.
+
+### Deployment order
+
+1. Create MongoDB Atlas database and obtain its connection string.
+2. Deploy the backend Web Service on Render with the `backend` Root Directory.
+3. Check `https://<backend-service>.onrender.com/health` and `/docs`.
+4. Deploy the frontend Web Service with the `apps/web` Root Directory.
+5. Set frontend `NEXT_PUBLIC_API_URL` to the deployed backend URL and rebuild.
+6. Set backend `CORS_ORIGINS` to the deployed frontend URL.
+7. Redeploy or restart services after environment changes.
+8. Test sign-in and the report, case, field-response, lab, and dashboard workflows.
+
+## Authentication
+
+Email/password sign-in is available to every provisioned account. Passwords
+are stored as bcrypt hashes; successful sign-in returns a JWT bearer token
+with a 12-hour expiry. The frontend stores the token locally and sends it on
+API requests. Backend role dependencies protect restricted endpoints.
+
+Google sign-in is optional and appears only when
+`NEXT_PUBLIC_GOOGLE_CLIENT_ID` is configured; the backend verifies the
+credential using `GOOGLE_CLIENT_ID`. Role redirects are `FARMER` to
+`/farmer`, `FIELD_WORKER` to `/field-worker`, `VETERINARIAN` to `/vet`,
+`LAB_STAFF` to `/lab`, district/state admins to `/gov`, and `SUPER_ADMIN` to
+`/admin/users`.
+
+## Disease Prediction and Risk
+
+The repository includes `backend/app/ml/artifacts/model.joblib` and its
+metadata, plus cleaned CSV data and the training/inference code. The loaded
+scikit-learn `RandomForestClassifier` predicts among anthrax, blackleg, foot
+and mouth, lumpy virus, and pneumonia. If the model is unavailable or its
+feature schema does not match, disease-category prediction uses the
+rule-based fallback and the API labels it `RULE_BASED_FALLBACK`.
+
+Model metadata reports 43,778 records and held-out accuracy of 0.6861 with
+macro F1 of 0.6777. The listed dataset source is mentor-provided, but its
+licensing/provenance is not independently verified. These metrics are not
+clinical validation and do not establish veterinary diagnostic accuracy.
+Separately, a transparent rule-based engine always calculates operational
+risk/urgency and recommended action using report, herd, nearby-case, outbreak,
+and weather context. See [ML prediction](docs/ml-disease-prediction.md) and
+[risk engine](docs/ai-risk-engine.md).
+
+## API and Testing
+
+The API is versioned under `/api/v1`. Interactive documentation is served at
+`/docs`; health is served at `/health`. Main route groups include auth, users,
+farms, animals, reports, cases, visits, treatments, laboratory, vaccinations,
+GIS, alerts, dashboard, sync, audit, and weather.
+
+Run backend tests from `backend`:
 
 ```powershell
-cd backend
-$env:CORS_ORIGINS="http://localhost:3000,http://127.0.0.1:3000,http://192.168.X.X:3000"
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m pytest -q
 ```
 
-Start the frontend in a separate PowerShell terminal, replacing the same
-placeholder with the host laptop's Wi-Fi IPv4 address:
+Run frontend checks from `apps/web`:
 
 ```powershell
-cd apps/web
-$env:NEXT_PUBLIC_API_URL="http://192.168.X.X:8000"
-$env:NEXT_DEV_ALLOWED_ORIGINS="192.168.X.X"
-npm run dev
+npm run build
+npm run lint
 ```
 
-On the host, verify `http://localhost:8000/health`. From another laptop on
-the same Wi-Fi, verify `http://192.168.X.X:8000/health`, then open
-`http://192.168.X.X:3000`. If Windows Firewall blocks access, allow inbound
-TCP ports 3000 and 8000 on the Private profile. Do not open MongoDB port
-27017; it must remain host/backend-only.
+The build includes TypeScript validation. There is no separate typecheck
+script in `package.json`; `npm run lint` runs ESLint.
 
-For Docker Compose, set `NEXT_PUBLIC_API_URL` to the same LAN backend URL and
-`CORS_ORIGINS` to include the LAN frontend origin in the environment used by
-Compose before running `docker compose up --build`.
+## Troubleshooting
 
-### Google Sign-In
+- **Database connection fails:** verify the Atlas URI, credentials, database name, and Atlas network access for the Render backend.
+- **Browser API requests fail:** check `NEXT_PUBLIC_API_URL`, make sure it has no `localhost` in deployment, and set backend `CORS_ORIGINS` to the exact frontend origin including scheme.
+- **No account can sign in:** no demo accounts are seeded. Register the first account on an empty database (it becomes `SUPER_ADMIN`), then provision staff accounts at `/admin/users`.
+- **Google sign-in is missing or rejected:** verify both Google client ID variables and the authorized frontend origin.
+- **Disease prediction uses fallback:** check backend logs, model artifact presence, and the metadata feature schema version; fallback risk scoring remains available.
 
-To enable the Google button for farmer sign-in, create a Google OAuth Web
-Client ID in Google Cloud Console. Add `http://localhost:3000` as an
-authorized JavaScript origin, then set the same client ID in both files:
+## Further Documentation
 
-```env
-# backend/.env
-GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-
-# apps/web/.env.local
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
-```
-
-Enable the Google Identity Services client and restart both servers. Google
-accounts are created as farmers, except the first account in an empty database,
-which follows the existing bootstrap-admin rule.
-
-### Docker (both services together)
-
-```bash
-docker compose up --build
-```
-Web: http://localhost:3000 · API: http://localhost:8000/docs
-
-### Tests
-
-```bash
-cd backend
-pytest -q
-```
-16 tests covering auth, RBAC, the AI risk engine, outbreak detection, and a
-full integration test walking the entire farmer→government workflow.
-
-## 7. API
-
-All endpoints are under `/api/v1/` — see full interactive documentation at
-`/docs` (Swagger) or `/openapi.json` once the backend is running. Endpoint
-groups: `/auth /users /farms /animals /reports /cases /visits /treatments
-/lab /vaccinations /gis /alerts /dashboard /sync /audit`.
-
-## 8. AI Risk Engine
-
-A **deterministic, rule-based** decision-support engine (not a trained ML
-model — see [`docs/ai-risk-engine.md`](docs/ai-risk-engine.md) for the full
-scoring specification). It never claims to provide a diagnosis: every
-response carries the disclaimer *"This assessment supports veterinary
-triage and does not replace professional veterinary diagnosis."*
-
-## 9. GIS & Outbreak Detection
-
-Geo-proximity queries use the haversine formula in Python for demo-mode
-compatibility (`mongomock` doesn't support MongoDB's native geo operators);
-against real MongoDB Atlas, 2dsphere indexes are created and can back a
-native `$geoNear` aggregation. Outbreak detection is a documented,
-explainable heuristic — not a research-grade epidemiological model. Full
-spec: [`docs/outbreak-detection.md`](docs/outbreak-detection.md).
-
-## 10. Offline Support
-
-Basic offline-first support for farmer/field-worker reporting:
-`LOCAL DATA → SYNC QUEUE → CENTRAL SYSTEM`. See
-[`docs/offline-sync.md`](docs/offline-sync.md). The web client-side queue
-implementation itself was left as an integration point in this pass (the
-backend `/api/v1/sync/reports` endpoint is fully implemented and tested);
-see limitations below.
-
-## 11. RBAC
-
-Seven roles (FARMER, FIELD_WORKER, VETERINARIAN, LAB_STAFF, DISTRICT_ADMIN,
-STATE_ADMIN, SUPER_ADMIN), enforced on every protected endpoint via FastAPI
-dependencies. Full permission matrix: [`docs/rbac.md`](docs/rbac.md).
-
-## 12. Known Limitations
-
-This is a **hackathon prototype**, not a production system. Explicitly out
-of scope, per the source requirements:
-
-- Advanced/trained ML models, computer-vision image diagnosis, weather
-  integration, voice/IVR, WhatsApp bots, IoT sensor feeds.
-- **Expo/React Native mobile app** — not built in this pass; the responsive
-  web app is the demo substitute. Architecture is mobile-ready (JWT auth,
-  clean REST API) so an Expo client could be added without backend changes.
-- **Hindi/Marathi UI translation** — not implemented in this pass; the data
-  model and component structure support adding an i18n layer.
-- **Client-side offline queue (localStorage/IndexedDB)** — the backend sync
-  endpoint exists and is tested, but the web client always submits online
-  in this build; wiring up the local-queue UI is the next increment.
-- Image upload accepts and stores a file reference for veterinary review;
-  no computer-vision diagnosis is performed or implied, per spec.
-- `mongomock` (demo mode) does not implement MongoDB's native geospatial
-  operators, so proximity queries run in Python (haversine) rather than as
-  a database-side `$geoNear`. This is fine at hackathon data volumes; see
-  `docs/database.md` for the production migration note.
-
-## 13. Future Scope
-
-See [`docs/future-scope.md`](docs/future-scope.md) for the phased roadmap:
-trained ML risk model, Expo mobile app, full i18n, FCM push notifications,
-computer-vision-assisted triage, weather-correlated risk factors.
+- [Architecture](docs/architecture.md)
+- [Database](docs/database.md)
+- [RBAC](docs/rbac.md)
+- [AI risk engine](docs/ai-risk-engine.md)
+- [ML disease prediction](docs/ml-disease-prediction.md)
+- [Outbreak detection](docs/outbreak-detection.md)
+- [Offline sync](docs/offline-sync.md)
+- [Weather integration](docs/weather-integration.md)
