@@ -3,7 +3,8 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import settings
+from app.core.config import DEVELOPMENT_JWT_SECRETS, RENDER_FRONTEND_ORIGIN, settings
+from app.core.db import database_connected, get_db
 
 logger = logging.getLogger("pashurakshak")
 from app.auth.router import router as auth_router
@@ -57,6 +58,20 @@ def warn_if_not_persistent():
     judge/evaluator restarting the backend against mongomock would see all
     data vanish and could mistake that for a real persistence bug."""
     logger.info("CORS allowed origins: %s", settings.CORS_ORIGINS)
+    if settings.IS_RENDER:
+        invalid_settings = []
+        if settings.DEMO_MODE:
+            invalid_settings.append("MONGODB_URI")
+        if len(settings.JWT_SECRET.strip()) < 32 or settings.JWT_SECRET in DEVELOPMENT_JWT_SECRETS:
+            invalid_settings.append("JWT_SECRET")
+        if RENDER_FRONTEND_ORIGIN not in settings.CORS_ORIGINS:
+            invalid_settings.append("CORS_ORIGINS")
+        if invalid_settings:
+            logger.error("Invalid Render configuration: %s", ", ".join(invalid_settings))
+            raise RuntimeError(
+                "Render requires valid production settings: " + ", ".join(invalid_settings)
+            )
+
     if settings.DEMO_MODE:
         logger.warning(
             "=" * 78 + "\n"
@@ -65,6 +80,14 @@ def warn_if_not_persistent():
             "development convenience ONLY. Set MONGODB_URI to a real MongoDB\n"
             "instance before running the SIH judged demo. See .env.example.\n" + "=" * 78
         )
+        return
+
+    try:
+        get_db().command("ping")
+    except Exception:
+        logger.exception("MongoDB connection check failed during startup")
+        if settings.IS_RENDER:
+            raise RuntimeError("MongoDB connection check failed during startup") from None
 
 
 @app.get("/")
@@ -83,7 +106,13 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "persistent_storage": not settings.DEMO_MODE}
+    connected = database_connected()
+    return {
+        "status": "ok" if connected is not False else "degraded",
+        "persistent_storage": not settings.DEMO_MODE,
+        "database_configured": not settings.DEMO_MODE,
+        "database_connected": connected,
+    }
 
 
 # Wrap the complete ASGI app so CORS headers are also applied to error

@@ -21,6 +21,13 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 
+DEVELOPMENT_JWT_SECRET = "dev-secret-change-me-in-production-2f8a9c"
+DEVELOPMENT_JWT_SECRETS = {
+    DEVELOPMENT_JWT_SECRET,
+    "dev-secret-change-me-in-production",
+}
+RENDER_FRONTEND_ORIGIN = "https://pashu-raksha-ai-1.onrender.com"
+
 
 def _parse_cors_origins(value: str) -> list[str]:
     return [
@@ -33,19 +40,20 @@ def _parse_cors_origins(value: str) -> list[str]:
 class Settings:
     APP_NAME: str = "PASHU-RAKSHAK AI"
     API_V1_PREFIX: str = "/api/v1"
+    IS_RENDER: bool = os.getenv("RENDER", "").lower() == "true"
 
     MONGODB_URI: str = os.getenv("MONGODB_URI", "")
     MONGODB_DB: str = os.getenv("MONGODB_DB", "pashurakshak")
     DEMO_MODE: bool = MONGODB_URI.strip() == ""
 
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "dev-secret-change-me-in-production-2f8a9c")
+    JWT_SECRET: str = os.getenv("JWT_SECRET", DEVELOPMENT_JWT_SECRET)
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE: timedelta = timedelta(hours=12)
 
     CORS_ORIGINS: list = _parse_cors_origins(
         os.getenv(
             "CORS_ORIGINS",
-            "http://localhost:3000,http://127.0.0.1:3000",
+            f"http://localhost:3000,http://127.0.0.1:3000,{RENDER_FRONTEND_ORIGIN}",
         )
     )
     GOOGLE_MAPS_API_KEY: str = os.getenv("GOOGLE_MAPS_API_KEY", "")

@@ -16,6 +16,9 @@ a real Atlas cluster with 2dsphere indexes (see docs/database.md).
 """
 from app.core.config import settings
 
+import logging
+
+logger = logging.getLogger("pashurakshak.database")
 _client = None
 _db = None
 
@@ -27,7 +30,7 @@ def _make_client():
         _client = mongomock.MongoClient()
     else:
         from pymongo import MongoClient
-        _client = MongoClient(settings.MONGODB_URI)
+        _client = MongoClient(settings.MONGODB_URI, serverSelectionTimeoutMS=5000)
     return _client
 
 
@@ -65,3 +68,15 @@ def reset_db():
     _db = None
     _client = None
     return get_db()
+
+
+def database_connected() -> bool | None:
+    """Return connectivity for persistent storage, or None in demo mode."""
+    if settings.DEMO_MODE:
+        return None
+    try:
+        get_db().command("ping")
+    except Exception:
+        logger.exception("MongoDB connectivity check failed")
+        return False
+    return True

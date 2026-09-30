@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -11,6 +12,7 @@ from app.core.utils import serialize, write_audit
 from app.core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+logger = logging.getLogger("pashurakshak.auth")
 
 
 class LoginResponse(BaseModel):
@@ -129,14 +131,22 @@ def google_login(payload: GoogleLoginIn):
 
 @router.post("/login", response_model=LoginResponse)
 def login(form: OAuth2PasswordRequestForm = Depends()):
-    db = get_db()
-    user = db.users.find_one({"email": form.username})
+    try:
+        db = get_db()
+        user = db.users.find_one({"email": form.username})
+    except Exception:
+        logger.exception("User lookup failed during password login")
+        raise
     if not user or not verify_password(form.password, user["password_hash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     token = create_access_token(str(user["_id"]), user["role"], user["email"])
     safe_user = serialize(user)
     safe_user.pop("password_hash", None)
-    write_audit(db, {"id": str(user["_id"]), "email": user["email"], "role": user["role"]}, "LOGIN", "user", user["_id"])
+    try:
+        write_audit(db, {"id": str(user["_id"]), "email": user["email"], "role": user["role"]}, "LOGIN", "user", user["_id"])
+    except Exception:
+        logger.exception("Audit write failed during password login")
+        raise
     return {"access_token": token, "user": safe_user}
 
 
